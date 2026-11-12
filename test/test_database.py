@@ -45,7 +45,21 @@ def test_add_get_concert(test_database):
     assert stored_concert == concert
 
 
-def test_get_cocnerts(test_database):
+def test_add_concert_rollback(test_database):
+    """Test inserting a wrong item in the DB."""
+
+    concert = Concert(
+        date="2026-11-12",
+        title=None,
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        database.add_concert(concert)
+
+    assert database.get_concerts() == []
+
+
+def test_get_concerts(test_database):
     """Test retrieving all concerts."""
 
     concert_1 = Concert(date="2026-11-12", title="Test 1", institution="Teatro")

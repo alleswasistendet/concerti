@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from database.models import Concert
@@ -55,17 +56,15 @@ def initialize_database(database_path: Path = DATABASE_PATH) -> None:
 def add_concert(concert: Concert) -> int:
     """Insert a concert into the database and return its ID."""
 
-    connection = get_connection()
-
-    try:
+    with closing(get_connection()) as connection, connection:
         cursor = connection.execute(
             """
-            INSERT INTO concerts (
-                concert_date, institution, title, price,
-                typology, subtypology, program, comment
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                INSERT INTO concerts (
+                    concert_date, institution, title, price,
+                    typology, subtypology, program, comment
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
             (
                 concert.date,
                 concert.institution,
@@ -78,33 +77,21 @@ def add_concert(concert: Concert) -> int:
             ),
         )
 
-        connection.commit()
-
         return cursor.lastrowid
-
-    finally:
-        connection.close()
 
 
 def get_concerts() -> list[tuple[int, Concert]]:
     """Return all concerts from the DB."""
 
-    connection = get_connection()
-
-    try:
+    with closing(get_connection()) as connection:
         cursor = connection.execute("SELECT * FROM concerts ORDER BY concert_date DESC")
         return [(row[0], convert_to_concert(row)) for row in cursor.fetchall()]
-
-    finally:
-        connection.close()
 
 
 def get_concert(concert_id: int) -> tuple[int, Concert] | None:
     """Return a concert by ID, or None if it does not exist."""
 
-    connection = get_connection()
-
-    try:
+    with closing(get_connection()) as connection:
         cursor = connection.execute(
             "SELECT * FROM concerts WHERE id = ?",
             (concert_id,),
@@ -116,9 +103,6 @@ def get_concert(concert_id: int) -> tuple[int, Concert] | None:
             return None
         return row[0], convert_to_concert(row)
 
-    finally:
-        connection.close()
-
 
 def update_concert(
     concert_id: int,
@@ -126,9 +110,7 @@ def update_concert(
 ) -> bool:
     """Update a concert and return whether it existed."""
 
-    connection = get_connection()
-
-    try:
+    with closing(get_connection()) as connection, connection:
         cursor = connection.execute(
             """
             UPDATE concerts
@@ -156,25 +138,15 @@ def update_concert(
             ),
         )
 
-        connection.commit()
-
         return cursor.rowcount > 0
-
-    finally:
-        connection.close()
 
 
 def delete_concert(concert_id: int) -> bool:
     """Delete a concert and return whether it existed."""
 
-    connection = get_connection()
-
-    try:
+    with closing(get_connection()) as connection, connection:
         cursor = connection.execute("DELETE FROM concerts WHERE id = ?", (concert_id,))
 
         connection.commit()
 
         return cursor.rowcount > 0
-
-    finally:
-        connection.close()
