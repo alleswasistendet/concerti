@@ -11,7 +11,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from theme import apply_theme
+
+from .cArchivePage import ArchivePage
+from .theme import apply_theme
 
 
 class ConcertiApp(QMainWindow):
@@ -20,13 +22,6 @@ class ConcertiApp(QMainWindow):
 
         self.setWindowTitle("Concerti")
         self.resize(1600, 960)
-
-        # title = QLabel("Concerti")
-        # title.setStyleSheet("""
-        #     font-size: 28px;
-        #     font-weight: 600;
-        #     padding: 30px
-        # """)
 
         # Principal widget
         central_widget = QWidget()
@@ -43,10 +38,6 @@ class ConcertiApp(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(16, 24, 16, 16)
 
-        # logo = QLabel("Concerti")
-        # logo.setObjectName("logo")
-        # sidebar_layout.addWidget(logo)
-
         sidebar_layout.addSpacing(30)
 
         # Navigation
@@ -56,12 +47,12 @@ class ConcertiApp(QMainWindow):
         self.pages = QStackedWidget()
 
         sections = [
-            ("Dashboard", self.create_page("Dashboard", "")),
-            ("Archivio", self.create_page("Archivio", "")),
+            ("Dashboard", self.create_page("Dashboard", "")),  # Dashboard page
+            ("Archivio", ArchivePage()),  # Archive page
             (
                 "Nuovo evento",
                 self.create_page("Nuovo evento", ""),
-            ),
+            ),  # New event page
         ]
 
         for index, (name, page) in enumerate(sections):
@@ -95,10 +86,10 @@ class ConcertiApp(QMainWindow):
         heading = QLabel(title)
         heading.setObjectName("page_title")
 
-        subtitle = QLabel(description)
+        # subtitle = QLabel(description)
 
         layout.addWidget(heading)
-        layout.addWidget(subtitle)
+        # layout.addWidget(subtitle)
         layout.addStretch()
 
         return page
