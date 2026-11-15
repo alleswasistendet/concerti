@@ -13,3 +13,6 @@ htmlcov/
 
 # Local database
 database/concerti.db
+
+# IDE
+.vscode/
