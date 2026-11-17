@@ -8,6 +8,9 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
         self.date_from = None
         self.date_to = None
 
+        self.month_year_from = None
+        self.month_year_to = None
+
         self.price_min = None
         self.price_max = None
 
@@ -32,17 +35,16 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
             raise ValueError("Seleziona anche l'anno.")
 
         if year is None:
-            self.set_date_range()
-            return
-
-        if month is None:
-            date_from = QDate(year, 1, 1)
-            date_to = QDate(year, 12, 31)
+            self.month_year_from = None
+            self.month_year_to = None
+        elif month is None:
+            self.month_year_from = QDate(year, 1, 1)
+            self.month_year_to = QDate(year, 12, 31)
         else:
-            date_from = QDate(year, month, 1)
-            date_to = QDate(year, month, date_from.daysInMonth())
+            self.month_year_from = QDate(year, month, 1)
+            self.month_year_to = QDate(year, month, self.month_year_from.daysInMonth())
 
-        self.set_date_range(date_from, date_to)
+        self.invalidate()
 
     def set_column_filter(self, column, value, mode="contains"):
         """Set a text filter for a column, either exact or by partial content's match."""
@@ -62,14 +64,13 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, source_row, source_parent):
         model = self.sourceModel()
         concert = model.concerts[source_row][1]
+        concert_date = QDate.fromString(
+            concert.date,
+            Qt.DateFormat.ISODate,
+        )
 
         # Date interval
         if self.date_from is not None or self.date_to is not None:
-            concert_date = QDate.fromString(
-                concert.date,
-                Qt.DateFormat.ISODate,
-            )
-
             if not concert_date.isValid():
                 return False
 
@@ -77,6 +78,17 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
                 return False
 
             if self.date_to is not None and concert_date > self.date_to:
+                return False
+
+        # Month / year filter
+        if self.month_year_from is not None or self.month_year_to is not None:
+            if not concert_date.isValid():
+                return False
+
+            if self.month_year_from is not None and concert_date < self.month_year_from:
+                return False
+
+            if self.month_year_to is not None and concert_date > self.month_year_to:
                 return False
 
         # Price interval
