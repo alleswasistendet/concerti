@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QDialog,
     QDoubleSpinBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -150,6 +151,48 @@ class ArchivePage(QWidget):
         price_layout.addWidget(self.price_max_edit)
         price_layout.addStretch()
 
+        # Text filters
+        self.text_filters = {}
+
+        text_columns = {
+            1: "Istituzione",
+            2: "Titolo",
+            4: "Tipologia",
+            5: "Sottotipologia",
+            6: "Programma",
+            7: "Commento",
+        }
+
+        text_filter_layout = QFormLayout()
+        text_filter_layout.setSpacing(8)
+
+        for column, label in text_columns.items():
+            value_combo = QComboBox()
+            value_combo.setEditable(True)
+            value_combo.addItem("")
+            value_combo.addItems(self.get_column_values(column))
+            value_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+            value_combo.setPlaceholderText(label)
+
+            mode_combo = QComboBox()
+            mode_combo.addItem("Contiene", "contains")
+            mode_combo.addItem("Uguale a", "exact")
+
+            value_combo.currentTextChanged.connect(
+                lambda value, col=column: self.update_text_filter(col)
+            )
+            mode_combo.currentIndexChanged.connect(
+                lambda value, col=column: self.update_text_filter(col)
+            )
+
+            self.text_filters[column] = (value_combo, mode_combo)
+
+            row_layout = QHBoxLayout()
+            row_layout.addWidget(value_combo, 1)
+            row_layout.addWidget(mode_combo)
+
+            text_filter_layout.addRow(label, row_layout)
+
         ### Buttons ###
         self.delete_button = QPushButton("Elimina")
         self.delete_button.setEnabled(False)
@@ -166,13 +209,23 @@ class ArchivePage(QWidget):
         layout.addLayout(date_layout)
         layout.addLayout(month_year_layout)
         layout.addLayout(price_layout)
+        layout.addLayout(text_filter_layout)
         layout.addLayout(delete_button_layout)
         layout.addWidget(self.table)
-        layout.addStretch()
 
     ###############
     ### Methods ###
     ###############
+
+    def get_column_values(self, column):
+        values = {
+            self.model.data(
+                self.model.index(row, column),
+            )
+            for row in range(self.model.rowCount())
+        }
+
+        return sorted((value for value in values if value), key=str.casefold)
 
     def delete_selected_concerts(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -200,6 +253,8 @@ class ArchivePage(QWidget):
         self.model.beginResetModel()
         self.model.concerts = get_concerts()
         self.model.endResetModel()
+
+        self.refresh_text_filter_values()
 
     def update_delete_button(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -232,3 +287,22 @@ class ArchivePage(QWidget):
         )
 
         self.proxy_model.set_price_range(price_min=price_min, price_max=price_max)
+
+    def update_text_filter(self, column):
+        value_combo, mode_combo = self.text_filters[column]
+
+        value = value_combo.currentText().strip()
+        mode = mode_combo.currentData()
+
+        self.proxy_model.set_column_filter(column, value, mode)
+
+    def refresh_text_filter_values(self):
+        for column, (value_combo, _) in self.text_filters.items():
+            current_value = value_combo.currentText()
+
+            value_combo.blockSignals(True)
+            value_combo.clear()
+            value_combo.addItem("")
+            value_combo.addItems(self.get_column_values(column))
+            value_combo.setCurrentText(current_value)
+            value_combo.blockSignals(False)
