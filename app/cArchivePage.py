@@ -22,6 +22,7 @@ from database.database import delete_concert, get_concerts
 from .cConcertFilterProxyModel import ConcertFilterProxyModel
 from .cConcertTableModel import ConcertTableModel
 from .cConfirmDialog import ConfirmDialog
+from .cRangeSlider import RangeSlider
 
 
 class ArchivePage(QWidget):
@@ -155,37 +156,24 @@ class ArchivePage(QWidget):
         )
 
         # Price filter
-        prices_float = tuple(float(x[:-2]) for x in self.get_column_values(3))
-        min_price_in_table = min(prices_float)
-        max_price_in_table = max(prices_float)
+        prices = [
+            concert.price
+            for _, concert in self.model.concerts
+            if concert.price is not None
+        ]
 
-        self.price_min_check = QCheckBox("Prezzo da")
-        self.price_min_check.setChecked(False)
-        self.price_min_edit = QDoubleSpinBox()
-        self.price_min_edit.setRange(0, 100000)
-        self.price_min_edit.setDecimals(2)
-        self.price_min_edit.setSuffix(" €")
-        self.price_min_edit.setValue(min_price_in_table)
+        min_price = round(min(prices) * 100) if prices else 0
+        max_price = round(max(prices) * 100) if prices else 0
 
-        self.price_max_check = QCheckBox("a")
-        self.price_max_check.setChecked(False)
-        self.price_max_edit = QDoubleSpinBox()
-        self.price_max_edit.setRange(0, 100000)
-        self.price_max_edit.setDecimals(2)
-        self.price_max_edit.setSuffix(" €")
-        self.price_max_edit.setValue(max_price_in_table)
+        self.price_label = QLabel("Prezzo")
 
-        self.price_min_check.toggled.connect(self.update_price_filter)
-        self.price_max_check.toggled.connect(self.update_price_filter)
-        self.price_min_edit.valueChanged.connect(self.update_price_filter)
-        self.price_max_edit.valueChanged.connect(self.update_price_filter)
+        self.price_slider = RangeSlider()
+        self.price_slider.setRange(min_price, max_price)
 
-        self.price_min_edit.valueChanged.connect(
-            lambda: self.price_min_check.setChecked(True)
-        )
-        self.price_max_edit.valueChanged.connect(
-            lambda: self.price_max_check.setChecked(True)
-        )
+        self.price_min_label = QLabel(f"{min_price / 100:.2f} €")
+        self.price_max_label = QLabel(f"{max_price / 100:.2f} €")
+
+        self.price_slider.rangeChanged.connect(self.update_price_filter)
 
         # Text filters
         self.text_filters = {}
@@ -243,10 +231,24 @@ class ArchivePage(QWidget):
         filters_grid.addWidget(self.date_to_check, 1, 2)
         filters_grid.addWidget(self.date_to_edit, 1, 3)
 
-        filters_grid.addWidget(self.price_min_check, 2, 0)
-        filters_grid.addWidget(self.price_min_edit, 2, 1)
-        filters_grid.addWidget(self.price_max_check, 2, 2)
-        filters_grid.addWidget(self.price_max_edit, 2, 3)
+        filters_grid.addWidget(
+            self.price_label, 2, 0, alignment=Qt.AlignmentFlag.AlignVCenter
+        )
+
+        price_layout = QVBoxLayout()
+        price_layout.setSpacing(0)
+
+        price_layout.addWidget(self.price_slider)
+
+        price_values_layout = QHBoxLayout()
+        price_values_layout.setContentsMargins(0, 0, 0, 0)
+        price_values_layout.addWidget(self.price_min_label)
+        price_values_layout.addStretch()
+        price_values_layout.addWidget(self.price_max_label)
+
+        price_layout.addLayout(price_values_layout)
+
+        filters_grid.addLayout(price_layout, 2, 1, 1, 3)
 
         filters_layout = QHBoxLayout()
         filters_layout.setSpacing(24)
@@ -356,15 +358,10 @@ class ArchivePage(QWidget):
 
         self.proxy_model.set_month_year(month=month, year=year)
 
-    def update_price_filter(self):
-        price_min = (
-            self.price_min_edit.value() if self.price_min_check.isChecked() else None
-        )
-        price_max = (
-            self.price_max_edit.value() if self.price_max_check.isChecked() else None
-        )
-
-        self.proxy_model.set_price_range(price_min=price_min, price_max=price_max)
+    def update_price_filter(self, min_price, max_price):
+        self.price_min_label.setText(f"{min_price / 100:.2f} €")
+        self.price_max_label.setText(f"{max_price / 100:.2f} €")
+        self.proxy_model.set_price_range(min_price / 100, max_price / 100)
 
     def update_text_filter(self, column):
         value_combo, mode_combo = self.text_filters[column]
