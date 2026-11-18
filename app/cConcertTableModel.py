@@ -36,6 +36,15 @@ class ConcertTableModel(QAbstractTableModel):
                 return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             return None
 
+        if role == Qt.ItemDataRole.UserRole:
+            if index.column() == 0:
+                concert = self.concerts[index.row()][1]
+                return QDate.fromString(
+                    concert.date,
+                    Qt.DateFormat.ISODate,
+                )
+            return None
+
         if role != Qt.ItemDataRole.DisplayRole:
             return None
 
