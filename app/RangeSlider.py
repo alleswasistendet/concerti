@@ -41,6 +41,19 @@ class RangeSlider(QWidget):
         self.update()
         self.rangeChanged.emit(self.lower_value, self.upper_value)
 
+    def setValues(self, lower, upper):
+        lower = max(self.minimum, min(lower, self.maximum))
+        upper = max(self.minimum, min(upper, self.maximum))
+
+        if lower > upper:
+            lower, upper = upper, lower
+
+        self.lower_value = lower
+        self.upper_value = upper
+
+        self.update()
+        self.rangeChanged.emit(lower, upper)
+
     def valueToPosition(self, value):
         margin = self.handle_radius
         available_width = self.width() - 2 * margin

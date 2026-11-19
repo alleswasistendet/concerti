@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from database.models import Concert
+from database.Concert import Concert
 
 DATABASE_DIR = Path(__file__).resolve().parent
 DATABASE_PATH = DATABASE_DIR / "concerti.db"

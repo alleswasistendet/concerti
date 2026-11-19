@@ -19,10 +19,10 @@ from PySide6.QtWidgets import (
 
 from database.database import delete_concert, get_concerts
 
-from .cConcertFilterProxyModel import ConcertFilterProxyModel
-from .cConcertTableModel import ConcertTableModel
-from .cConfirmDialog import ConfirmDialog
-from .cRangeSlider import RangeSlider
+from .ConcertFilterProxyModel import ConcertFilterProxyModel
+from .ConcertTableModel import ConcertTableModel
+from .ConfirmDialog import ConfirmDialog
+from .RangeSlider import RangeSlider
 
 
 class ArchivePage(QWidget):

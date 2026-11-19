@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .cArchivePage import ArchivePage
+from .ArchivePage import ArchivePage
 from .theme import apply_theme
 
 
