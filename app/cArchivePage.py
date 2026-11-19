@@ -1,11 +1,11 @@
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDateEdit,
     QDialog,
-    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QHBoxLayout,
@@ -218,6 +218,7 @@ class ArchivePage(QWidget):
             text_filter_layout.addRow(label, row_layout)
 
         # Filters layout
+        # - First column: dates and price
         filters_grid = QGridLayout()
         filters_grid.setHorizontalSpacing(12)
         filters_grid.setVerticalSpacing(12)
@@ -231,33 +232,48 @@ class ArchivePage(QWidget):
         filters_grid.addWidget(self.date_to_check, 1, 2)
         filters_grid.addWidget(self.date_to_edit, 1, 3)
 
-        filters_grid.addWidget(
-            self.price_label, 2, 0, alignment=Qt.AlignmentFlag.AlignVCenter
+        price_filter_layout = QGridLayout()
+        price_filter_layout.setContentsMargins(0, 0, 0, 0)
+        price_filter_layout.setVerticalSpacing(2)
+        price_filter_layout.setColumnStretch(1, 1)
+
+        price_filter_layout.addWidget(
+            self.price_label, 0, 0, alignment=Qt.AlignmentFlag.AlignVCenter
         )
 
-        price_layout = QVBoxLayout()
-        price_layout.setSpacing(0)
-
-        price_layout.addWidget(self.price_slider)
+        price_filter_layout.addWidget(self.price_slider, 0, 1)
 
         price_values_layout = QHBoxLayout()
         price_values_layout.setContentsMargins(0, 0, 0, 0)
+
         price_values_layout.addWidget(self.price_min_label)
         price_values_layout.addStretch()
         price_values_layout.addWidget(self.price_max_label)
 
-        price_layout.addLayout(price_values_layout)
+        price_filter_layout.addLayout(price_values_layout, 1, 1)
 
-        filters_grid.addLayout(price_layout, 2, 1, 1, 3)
+        filters_grid.addLayout(price_filter_layout, 2, 0, 1, 4)
 
+        # - Actual filters layout
         filters_layout = QHBoxLayout()
         filters_layout.setSpacing(24)
 
         filters_layout.addLayout(filters_grid)
         filters_layout.addLayout(text_filter_layout, 1)
 
-        filters_layout.setAlignment(filters_grid, Qt.AlignmentFlag.AlignTop)
+        filters_layout.setAlignment(filters_grid, Qt.AlignmentFlag.AlignCenter)
         filters_layout.setAlignment(text_filter_layout, Qt.AlignmentFlag.AlignTop)
+
+        # Animated filters panel
+        self.filter_panel = QWidget()
+        self.filter_panel.setLayout(filters_layout)
+        self.filter_panel.setMaximumHeight(0)
+
+        self.filters_animation = QPropertyAnimation(
+            self.filter_panel, b"maximumHeight", self
+        )
+        self.filters_animation.setDuration(250)
+        self.filters_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
 
         ### Statistics ###
 
@@ -272,7 +288,7 @@ class ArchivePage(QWidget):
         statistics_layout.addWidget(self.event_stat)
 
         ### Buttons ###
-
+        # Delete button
         self.delete_button = QPushButton("Elimina")
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self.delete_selected_concerts)
@@ -283,9 +299,20 @@ class ArchivePage(QWidget):
         delete_button_layout.addStretch()
         delete_button_layout.addWidget(self.delete_button)
 
+        # Toggle filters button
+        self.toggle_filters_buttom = QPushButton("Filtri")
+        self.toggle_filters_buttom.clicked.connect(self.toggle_filters)
+
         ### Page layout ###
-        layout.addWidget(heading)
-        layout.addLayout(filters_layout)
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(heading)
+        header_layout.addStretch()
+        header_layout.addWidget(self.toggle_filters_buttom)
+        header_layout.addStretch()
+        header_layout.addWidget(self.toggle_filters_buttom)
+
+        layout.addLayout(header_layout)
+        layout.addWidget(self.filter_panel)
         layout.addLayout(delete_button_layout)
         layout.addWidget(self.table)
         layout.addLayout(statistics_layout)
@@ -397,7 +424,7 @@ class ArchivePage(QWidget):
 
             total_price += concert.price
 
-        average_price = total_price / event_count
+        average_price = total_price / event_count if event_count > 0 else None
 
         return {
             "event_count": event_count,
@@ -417,3 +444,25 @@ class ArchivePage(QWidget):
             if average_price is not None
             else "Prezzo medio: —"
         )
+
+        metrics = QFontMetrics(self.total_price_stat.font())
+        self.total_price_stat.setFixedWidth(
+            metrics.horizontalAdvance("Totale: 99.999,99€")
+        )
+        self.average_price_stat.setFixedWidth(
+            metrics.horizontalAdvance("Prezzo medio: 999,99€")
+        )
+
+    def toggle_filters(self):
+        self.filters_animation.stop()
+
+        if self.filter_panel.maximumHeight() == 0:
+            self.filters_animation.setStartValue(0)
+            self.filters_animation.setEndValue(self.filter_panel.sizeHint().height())
+            self.toggle_filters_buttom.setText("Nascondi filtri")
+        else:
+            self.filters_animation.setStartValue(self.filter_panel.maximumHeight())
+            self.filters_animation.setEndValue(0)
+            self.toggle_filters_buttom.setText("Filtri")
+
+        self.filters_animation.start()
