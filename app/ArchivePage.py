@@ -54,12 +54,6 @@ class ArchivePage(QWidget):
             Qt.SortOrder.DescendingOrder,
         )
 
-        # Assign statistics
-        self.proxy_model.modelReset.connect(lambda *args: self.update_statistics())
-        self.proxy_model.layoutChanged.connect(lambda *args: self.update_statistics())
-        self.proxy_model.rowsInserted.connect(lambda *args: self.update_statistics())
-        self.proxy_model.rowsRemoved.connect(lambda *args: self.update_statistics())
-
         # Assign proxy model to table
         self.table.setModel(self.proxy_model)
 
@@ -156,24 +150,16 @@ class ArchivePage(QWidget):
         )
 
         # Price filter
-        prices = [
-            concert.price
-            for _, concert in self.model.concerts
-            if concert.price is not None
-        ]
-
-        min_price = round(min(prices) * 100) if prices else 0
-        max_price = round(max(prices) * 100) if prices else 0
-
         self.price_label = QLabel("Prezzo")
 
         self.price_slider = RangeSlider()
-        self.price_slider.setRange(min_price, max_price)
 
-        self.price_min_label = QLabel(f"{min_price / 100:.2f} €")
-        self.price_max_label = QLabel(f"{max_price / 100:.2f} €")
+        self.price_min_label = QLabel("0.00 €")
+        self.price_max_label = QLabel("0.00 €")
 
         self.price_slider.rangeChanged.connect(self.update_price_filter)
+
+        self.update_price_slider_range()
 
         # Text filters
         self.text_filters = {}
@@ -322,6 +308,11 @@ class ArchivePage(QWidget):
         layout.addWidget(self.table)
         layout.addLayout(statistics_layout)
 
+        # Assign statistics
+        self.proxy_model.modelReset.connect(lambda *args: self.update_statistics())
+        self.proxy_model.layoutChanged.connect(lambda *args: self.update_statistics())
+        self.proxy_model.rowsInserted.connect(lambda *args: self.update_statistics())
+        self.proxy_model.rowsRemoved.connect(lambda *args: self.update_statistics())
         self.update_statistics()
 
     ###############
@@ -336,7 +327,9 @@ class ArchivePage(QWidget):
             for row in range(self.model.rowCount())
         }
 
-        return sorted((value for value in values if value), key=str.casefold)
+        unique_values = {value.casefold(): value for value in values if value}
+
+        return sorted(unique_values.values(), key=str.casefold)
 
     def delete_selected_concerts(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -365,7 +358,7 @@ class ArchivePage(QWidget):
         self.model.concerts = get_concerts()
         self.model.endResetModel()
 
-        self.refresh_text_filter_values()
+        self.refresh_filter_values()
 
     def update_delete_button(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -395,6 +388,24 @@ class ArchivePage(QWidget):
         self.price_max_label.setText(f"{max_price / 100:.2f} €")
         self.proxy_model.set_price_range(min_price / 100, max_price / 100)
 
+    def update_price_slider_range(self):
+        prices = [
+            concert.price
+            for _, concert in self.model.concerts
+            if concert.price is not None
+        ]
+
+        min_price = round(min(prices) * 100) if prices else 0
+        max_price = round(max(prices) * 100) if prices else 0
+
+        self.price_slider.setRange(min_price, max_price)
+        self.price_slider.setValues(min_price, max_price)
+
+        self.price_min_label.setText(f"{min_price / 100:.2f} €")
+        self.price_max_label.setText(f"{max_price / 100:.2f} €")
+
+        self.proxy_model.set_price_range()
+
     def update_text_filter(self, column):
         value_combo, mode_combo = self.text_filters[column]
 
@@ -403,7 +414,29 @@ class ArchivePage(QWidget):
 
         self.proxy_model.set_column_filter(column, value, mode)
 
-    def refresh_text_filter_values(self):
+    def refresh_filter_values(self):
+        # Refresh price filter
+        prices = [
+            concert.price
+            for _, concert in self.model.concerts
+            if concert.price is not None
+        ]
+
+        min_price = round(min(prices) * 100) if prices else 0
+        max_price = round(max(prices) * 100) if prices else 0
+
+        current_min = max(self.price_slider.lower_value, min_price)
+        current_max = min(self.price_slider.upper_value, max_price)
+
+        current_min = min(current_min, current_max)
+
+        self.price_slider.setRange(min_price, max_price)
+        self.price_slider.setValues(current_min, current_max)
+
+        self.price_min_label.setText(f"{current_min / 100:.2f} €")
+        self.price_max_label.setText(f"{current_max / 100:.2f} €")
+
+        # Refresh text filters
         for column, (value_combo, _) in self.text_filters.items():
             current_value = value_combo.currentText()
 
