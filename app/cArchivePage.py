@@ -51,7 +51,7 @@ class ArchivePage(QWidget):
         self.proxy_model.setSortRole(Qt.ItemDataRole.UserRole)
         self.proxy_model.sort(
             0,
-            Qt.SortOrder.AscendingOrder,
+            Qt.SortOrder.DescendingOrder,
         )
 
         # Assign statistics
@@ -128,18 +128,18 @@ class ArchivePage(QWidget):
             QDate.fromString(concert.date, Qt.DateFormat.ISODate)
             for _, concert in self.model.concerts
         ]
-        min_date_in_table = min(dates)
-        max_date_in_table = max(dates)
+        self.min_date_in_table = min(dates)
+        self.max_date_in_table = max(dates)
 
         self.date_from_check = QCheckBox("Data da")
         self.date_from_check.setChecked(False)
-        self.date_from_edit = QDateEdit(min_date_in_table)
+        self.date_from_edit = QDateEdit(self.min_date_in_table)
         self.date_from_edit.setCalendarPopup(True)
         self.date_from_edit.setDisplayFormat("dd/MM/yyyy")
 
         self.date_to_check = QCheckBox("a")
         self.date_to_check.setChecked(False)
-        self.date_to_edit = QDateEdit(max_date_in_table)
+        self.date_to_edit = QDateEdit(self.max_date_in_table)
         self.date_to_edit.setCalendarPopup(True)
         self.date_to_edit.setDisplayFormat("dd/MM/yyyy")
 
@@ -303,11 +303,16 @@ class ArchivePage(QWidget):
         self.toggle_filters_buttom = QPushButton("Filtri")
         self.toggle_filters_buttom.clicked.connect(self.toggle_filters)
 
+        # Reset filters button
+        self.reset_filters_button = QPushButton("Reset")
+        self.reset_filters_button.clicked.connect(self.reset_filters)
+
         ### Page layout ###
         header_layout = QHBoxLayout()
         header_layout.addWidget(heading)
         header_layout.addStretch()
         header_layout.addWidget(self.toggle_filters_buttom)
+        header_layout.addWidget(self.reset_filters_button)
         header_layout.addStretch()
         header_layout.addWidget(self.toggle_filters_buttom)
 
@@ -466,3 +471,33 @@ class ArchivePage(QWidget):
             self.toggle_filters_buttom.setText("Filtri")
 
         self.filters_animation.start()
+
+    def reset_filters(self):
+        # Month / year
+        self.month_combo.setCurrentIndex(0)
+        self.year_combo.setCurrentIndex(0)
+        self.month_year_check.setChecked(False)
+
+        # Base date
+        self.date_to_check.setChecked(False)
+        self.date_from_edit.setDate(self.min_date_in_table)
+        self.date_to_edit.setDate(self.max_date_in_table)
+        self.date_from_check.setChecked(False)
+
+        # Price
+        self.price_slider.setValues(
+            self.price_slider.minimum, self.price_slider.maximum
+        )
+
+        # Text
+        for value_combo, mode_combo in self.text_filters.values():
+            value_combo.setCurrentText("")
+            mode_combo.setCurrentIndex(0)
+
+        # Reset proxy filters
+        self.proxy_model.set_date_range()
+        self.proxy_model.set_month_year()
+        self.proxy_model.set_price_range()
+
+        for column in self.text_filters:
+            self.proxy_model.set_column_filter(column, "")
