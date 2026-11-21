@@ -35,6 +35,7 @@ class ConfirmDialog(QDialog):
         confirm_button.clicked.connect(self.accept)
 
         cancel_button = QPushButton(cancel_text)
+        cancel_button.setDefault(True)
         cancel_button.clicked.connect(self.reject)
 
         button_layout.addWidget(confirm_button)

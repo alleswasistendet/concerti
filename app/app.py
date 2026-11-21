@@ -6,13 +6,17 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from database.database import add_concert, update_concert
+
 from .ArchivePage import ArchivePage
+from .ConcertDialog import ConcertDialog
 from .theme import apply_theme
 
 
@@ -46,13 +50,12 @@ class ConcertiApp(QMainWindow):
 
         self.pages = QStackedWidget()
 
+        self.archive_page = ArchivePage()
+        self.archive_page.edit_requested.connect(self.open_edit_concert_dialog)
+
         sections = [
             ("Dashboard", self.create_page("Dashboard", "")),  # Dashboard page
-            ("Archivio", ArchivePage()),  # Archive page
-            (
-                "Nuovo evento",
-                self.create_page("Nuovo evento", ""),
-            ),  # New event page
+            ("Archivio", self.archive_page),  # Archive page
         ]
 
         for index, (name, page) in enumerate(sections):
@@ -63,6 +66,11 @@ class ConcertiApp(QMainWindow):
             sidebar_layout.addWidget(button)
 
             self.pages.addWidget(page)
+
+        # New concert button
+        self.new_concert_button = QPushButton("Nuovo evento")
+        self.new_concert_button.clicked.connect(self.open_new_concert_dialog)
+        sidebar_layout.addWidget(self.new_concert_button)
 
         sidebar_layout.addStretch()
 
@@ -93,6 +101,40 @@ class ConcertiApp(QMainWindow):
         layout.addStretch()
 
         return page
+
+    def open_new_concert_dialog(self):
+        dialog = ConcertDialog(parent=self)
+
+        if dialog.exec():
+            concert = dialog.get_concert()
+
+            try:
+                add_concert(concert)
+                self.archive_page.reload_concerts()
+
+            except Exception as error:
+                QMessageBox.critical(
+                    self,
+                    "Errore",
+                    f"Impossibile salvare l'evento:\n{error}",
+                )
+
+    def open_edit_concert_dialog(self, concert_id, concert):
+        dialog = ConcertDialog(concert, parent=self)
+
+        if dialog.exec():
+            updated_concert = dialog.get_concert()
+
+            try:
+                update_concert(concert_id, updated_concert)
+                self.archive_page.reload_concerts()
+
+            except Exception as error:
+                QMessageBox.critical(
+                    self,
+                    "Errore",
+                    f"Impossibile aggiornare l'evento:\n{error}",
+                )
 
 
 if __name__ == "__main__":

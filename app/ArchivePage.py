@@ -1,4 +1,4 @@
-from PySide6.QtCore import QDate, QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtCore import QDate, QEasingCurve, QPropertyAnimation, Qt, Signal
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -26,6 +26,10 @@ from .RangeSlider import RangeSlider
 
 
 class ArchivePage(QWidget):
+    edit_requested = Signal(
+        int, object
+    )  # signal holding the concert_id and Concert object
+
     def __init__(self):
         super().__init__()
 
@@ -56,6 +60,9 @@ class ArchivePage(QWidget):
 
         # Assign proxy model to table
         self.table.setModel(self.proxy_model)
+
+        # Double click to update a selected line
+        self.table.doubleClicked.connect(self.edit_concert)
 
         # Table
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -319,6 +326,20 @@ class ArchivePage(QWidget):
     ### Methods ###
     ###############
 
+    def reload_concerts(self):
+        self.model.beginResetModel()
+        self.model.concerts = get_concerts()
+        self.model.endResetModel()
+
+        self.refresh_filter_values()
+
+    def edit_concert(self, proxy_index):
+        source_index = self.proxy_model.mapToSource(proxy_index)
+
+        concert_id, concert = self.model.concerts[source_index.row()]
+
+        self.edit_requested.emit(concert_id, concert)
+
     def get_column_values(self, column):
         values = {
             self.model.data(
@@ -415,7 +436,19 @@ class ArchivePage(QWidget):
         self.proxy_model.set_column_filter(column, value, mode)
 
     def refresh_filter_values(self):
-        # Refresh price filter
+        ### Refresh price filter ###
+        # Current slider range
+        old_min = self.price_slider.minimum
+        old_max = self.price_slider.maximum
+
+        # Current selected range
+        current_min = self.price_slider.lower_value
+        current_max = self.price_slider.upper_value
+
+        # Check if the price filter has been modified
+        price_filter_unchanged = current_min == old_min and current_max == old_max
+
+        # New price range from source model
         prices = [
             concert.price
             for _, concert in self.model.concerts
@@ -425,18 +458,26 @@ class ArchivePage(QWidget):
         min_price = round(min(prices) * 100) if prices else 0
         max_price = round(max(prices) * 100) if prices else 0
 
-        current_min = max(self.price_slider.lower_value, min_price)
-        current_max = min(self.price_slider.upper_value, max_price)
+        if price_filter_unchanged:
+            # Extend filter to the new price range
+            current_min = min_price
+            current_max = max_price
+        else:
+            # Preserve the filtered price selection
+            current_min = max(current_min, min_price)
+            current_max = min(current_max, max_price)
 
         current_min = min(current_min, current_max)
 
+        # Update slider
         self.price_slider.setRange(min_price, max_price)
         self.price_slider.setValues(current_min, current_max)
 
+        # Update labels
         self.price_min_label.setText(f"{current_min / 100:.2f} €")
         self.price_max_label.setText(f"{current_max / 100:.2f} €")
 
-        # Refresh text filters
+        ### Refresh text filters ###
         for column, (value_combo, _) in self.text_filters.items():
             current_value = value_combo.currentText()
 
@@ -446,50 +487,6 @@ class ArchivePage(QWidget):
             value_combo.addItems(self.get_column_values(column))
             value_combo.setCurrentText(current_value)
             value_combo.blockSignals(False)
-
-    def compute_statistics(self):
-        event_count = self.proxy_model.rowCount()
-        total_price = 0.0
-
-        for row in range(event_count):
-            proxy_index = self.proxy_model.index(row, 0)
-            source_index = self.proxy_model.mapToSource(proxy_index)
-
-            concert = self.model.concerts[source_index.row()][1]
-
-            if concert.price is None:
-                continue
-
-            total_price += concert.price
-
-        average_price = total_price / event_count if event_count > 0 else None
-
-        return {
-            "event_count": event_count,
-            "total_price": total_price,
-            "average_price": average_price,
-        }
-
-    def update_statistics(self):
-        statistics = self.compute_statistics()
-
-        self.event_stat.setText(f"Eventi: {statistics['event_count']}")
-        self.total_price_stat.setText(f"Totale: {statistics['total_price']:.2f} €")
-
-        average_price = statistics["average_price"]
-        self.average_price_stat.setText(
-            f"Prezzo medio: {average_price:.2f} €"
-            if average_price is not None
-            else "Prezzo medio: —"
-        )
-
-        metrics = QFontMetrics(self.total_price_stat.font())
-        self.total_price_stat.setFixedWidth(
-            metrics.horizontalAdvance("Totale: 99.999,99€")
-        )
-        self.average_price_stat.setFixedWidth(
-            metrics.horizontalAdvance("Prezzo medio: 999,99€")
-        )
 
     def toggle_filters(self):
         self.filters_animation.stop()
@@ -534,3 +531,47 @@ class ArchivePage(QWidget):
 
         for column in self.text_filters:
             self.proxy_model.set_column_filter(column, "")
+
+    def compute_statistics(self):
+        event_count = self.proxy_model.rowCount()
+        total_price = 0.0
+
+        for row in range(event_count):
+            proxy_index = self.proxy_model.index(row, 0)
+            source_index = self.proxy_model.mapToSource(proxy_index)
+
+            concert = self.model.concerts[source_index.row()][1]
+
+            if concert.price is None:
+                continue
+
+            total_price += concert.price
+
+        average_price = total_price / event_count if event_count > 0 else None
+
+        return {
+            "event_count": event_count,
+            "total_price": total_price,
+            "average_price": average_price,
+        }
+
+    def update_statistics(self):
+        statistics = self.compute_statistics()
+
+        self.event_stat.setText(f"Eventi: {statistics['event_count']}")
+        self.total_price_stat.setText(f"Totale: {statistics['total_price']:.2f} €")
+
+        average_price = statistics["average_price"]
+        self.average_price_stat.setText(
+            f"Prezzo medio: {average_price:.2f} €"
+            if average_price is not None
+            else "Prezzo medio: —"
+        )
+
+        metrics = QFontMetrics(self.total_price_stat.font())
+        self.total_price_stat.setFixedWidth(
+            metrics.horizontalAdvance("Totale: 99.999,99€")
+        )
+        self.average_price_stat.setFixedWidth(
+            metrics.horizontalAdvance("Prezzo medio: 999,99€")
+        )

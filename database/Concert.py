@@ -6,7 +6,7 @@ class Concert:
     date: str
     title: str
     institution: str | None = None
-    price: float | None = None
+    price: float = 0.0
     typology: str | None = None
     subtypology: str | None = None
     program: str | None = None
