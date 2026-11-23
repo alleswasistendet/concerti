@@ -2,18 +2,18 @@ from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
     QDateEdit,
     QDialog,
-    QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
 )
 
 from database.Concert import Concert
+
+from .AlertDialog import AlertDialog
 
 
 class ConcertDialog(QDialog):
@@ -126,9 +126,12 @@ class ConcertDialog(QDialog):
 
     def validate_and_save(self):
         if not self.title_edit.text().strip():
-            QMessageBox.warning(
-                self, "Campo obbligatorio", "Inserisci il titolo dell'evento."
+            dialog = AlertDialog(
+                title="Campo obbligatorio",
+                message="Inserisci il titolo dell'evento.",
+                parent=self,
             )
+            dialog.exec()
             self.title_edit.setFocus()
             return
 

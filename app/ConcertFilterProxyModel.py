@@ -52,7 +52,7 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
         if not value:
             self.column_filters.pop(column, None)
         else:
-            if mode not in ("exact", "contains"):
+            if mode not in ("exact", "contains", "all_words"):
                 raise ValueError(
                     "Sono ammessi solo filtri esatti o per corrispondenza parziale."
                 )
@@ -114,8 +114,16 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
             if mode == "exact":
                 if value.casefold() != target.casefold():
                     return False
-            elif mode == "contains":  # noqa: SIM102
+
+            elif mode == "contains":
                 if target.casefold() not in value.casefold():
+                    return False
+
+            elif mode == "all_words":
+                words = target.casefold().split()
+                text = value.casefold()
+
+                if not all(word in text for word in words):
                     return False
 
         return True

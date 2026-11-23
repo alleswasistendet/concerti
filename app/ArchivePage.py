@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from database.database import delete_concert, get_concerts
 
+from .AlertDialog import AlertDialog
 from .ConcertFilterProxyModel import ConcertFilterProxyModel
 from .ConcertTableModel import ConcertTableModel
 from .ConfirmDialog import ConfirmDialog
@@ -89,7 +90,7 @@ class ArchivePage(QWidget):
 
         self.month_combo = QComboBox()
         self.month_combo.addItem("Tutti i mesi", None)
-        for year in sorted(years):
+        for year in sorted(years, reverse=True):
             self.year_combo.addItem(str(year), year)
 
         months = [
@@ -112,16 +113,10 @@ class ArchivePage(QWidget):
 
         self.month_year_check.toggled.connect(self.update_month_year_filter)
         self.year_combo.currentIndexChanged.connect(
-            lambda _: self.update_month_year_filter()
+            lambda _: self.update_month_year_filter(source="year")
         )
         self.month_combo.currentIndexChanged.connect(
-            lambda _: self.update_month_year_filter()
-        )
-        self.year_combo.currentIndexChanged.connect(
-            lambda: self.month_year_check.setChecked(True)
-        )
-        self.month_combo.currentIndexChanged.connect(
-            lambda: self.month_year_check.setChecked(True)
+            lambda _: self.update_month_year_filter(source="month")
         )
 
         # Base date filter
@@ -191,22 +186,28 @@ class ArchivePage(QWidget):
             value_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
             value_combo.setPlaceholderText(label)
 
-            mode_combo = QComboBox()
-            mode_combo.addItem("Contiene", "contains")
-            mode_combo.addItem("Uguale a", "exact")
-
             value_combo.currentTextChanged.connect(
                 lambda value, col=column: self.update_text_filter(col)
             )
-            mode_combo.currentIndexChanged.connect(
-                lambda value, col=column: self.update_text_filter(col)
-            )
+
+            if column == 2:  # Title
+                mode_combo = QComboBox()
+                mode_combo.addItem("Contiene", "contains")
+                mode_combo.addItem("Uguale a", "exact")
+
+                mode_combo.currentIndexChanged.connect(
+                    lambda value, col=column: self.update_text_filter(col)
+                )
+            else:
+                mode_combo = None
 
             self.text_filters[column] = (value_combo, mode_combo)
 
             row_layout = QHBoxLayout()
             row_layout.addWidget(value_combo, 1)
-            row_layout.addWidget(mode_combo)
+
+            if mode_combo is not None:
+                row_layout.addWidget(mode_combo)
 
             text_filter_layout.addRow(label, row_layout)
 
@@ -394,13 +395,33 @@ class ArchivePage(QWidget):
 
         self.proxy_model.set_date_range(date_from, date_to)
 
-    def update_month_year_filter(self):
+    def update_month_year_filter(self, source=None):
+        # Enable filter
+        if source is not None and not self.month_year_check.isChecked():
+            self.month_year_check.blockSignals(True)
+            self.month_year_check.setChecked(True)
+            self.month_year_check.blockSignals(False)
+
         if not self.month_year_check.isChecked():
             self.proxy_model.set_month_year()
             return
 
         year = self.year_combo.currentData()
         month = self.month_combo.currentData()
+
+        if month is not None and year is None:
+            if source == "month":
+                dialog = AlertDialog(
+                    title="Filtro non valido",
+                    message="Seleziona un anno.",
+                    parent=self,
+                )
+                dialog.exec()
+
+                self.month_combo.setCurrentIndex(0)
+
+            self.proxy_model.set_month_year()
+            return
 
         self.proxy_model.set_month_year(month=month, year=year)
 
@@ -431,7 +452,13 @@ class ArchivePage(QWidget):
         value_combo, mode_combo = self.text_filters[column]
 
         value = value_combo.currentText().strip()
-        mode = mode_combo.currentData()
+
+        if column in (1, 4, 5):  # Institution, Typology, Subtypology
+            mode = "exact"
+        elif column in (6, 7):  # Program, Comment
+            mode = "all_words"
+        else:
+            mode = mode_combo.currentData()  # Title
 
         self.proxy_model.set_column_filter(column, value, mode)
 
@@ -522,7 +549,9 @@ class ArchivePage(QWidget):
         # Text
         for value_combo, mode_combo in self.text_filters.values():
             value_combo.setCurrentText("")
-            mode_combo.setCurrentIndex(0)
+
+            if mode_combo is not None:
+                mode_combo.setCurrentIndex(0)
 
         # Reset proxy filters
         self.proxy_model.set_date_range()
