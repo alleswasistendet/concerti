@@ -115,7 +115,7 @@ class ArchivePage(QWidget):
         for month, name in enumerate(months, start=1):
             self.month_combo.addItem(name, month)
 
-        self.month_year_check.toggled.connect(self.update_month_year_filter)
+        self.month_year_check.toggled.connect(lambda _: self.update_month_year_filter())
         self.year_combo.currentIndexChanged.connect(
             lambda _: self.update_month_year_filter(source="year")
         )
@@ -559,8 +559,15 @@ class ArchivePage(QWidget):
 
     def reset_filters(self):
         # Month / year
+        self.month_combo.blockSignals(True)
+        self.year_combo.blockSignals(True)
+
         self.month_combo.setCurrentIndex(0)
         self.year_combo.setCurrentIndex(0)
+
+        self.month_combo.blockSignals(False)
+        self.year_combo.blockSignals(False)
+
         self.month_year_check.setChecked(False)
 
         # Base date
