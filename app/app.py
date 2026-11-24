@@ -20,7 +20,7 @@ from database.database import add_concert, update_concert
 
 from .ArchivePage import ArchivePage
 from .ConcertDialog import ConcertDialog
-from .theme import apply_theme
+from .theme import apply_theme, is_dark_mode
 
 
 class ConcertiApp(QMainWindow):
@@ -63,8 +63,12 @@ class ConcertiApp(QMainWindow):
             ("Archivio", self.archive_page),  # Archive page
         ]
 
+        icon_theme = "dark" if is_dark_mode() else "light"
         icon_path = Path(__file__).resolve().parent / "icons"
-        icons = [icon_path / "layout-dashboard.svg", icon_path / "archive.svg"]
+        icons = [
+            icon_path / f"layout-dashboard-{icon_theme}.svg",
+            icon_path / f"archive-{icon_theme}.svg",
+        ]
 
         for index, (name, page) in enumerate(sections):
             button = QPushButton()
@@ -82,7 +86,9 @@ class ConcertiApp(QMainWindow):
         # New event button
         self.new_concert_button = QPushButton("")
         self.new_concert_button.setFixedSize(48, 48)
-        self.new_concert_button.setIcon(QIcon(str(icon_path / "plus.svg")))
+        self.new_concert_button.setIcon(
+            QIcon(str(icon_path / f"plus-{icon_theme}.svg"))
+        )
         self.new_concert_button.setIconSize(QSize(24, 24))
         self.new_concert_button.setToolTip("Nuovo evento")
         self.new_concert_button.clicked.connect(self.open_new_concert_dialog)

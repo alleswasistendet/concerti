@@ -58,6 +58,11 @@ def get_stylesheet(dark: bool) -> str:
         "border": "#454545" if dark else "#d5d4d2",
         "button": "#303030" if dark else "#e8e7e5",
         "button_hover": "#414141" if dark else "#deddda",
+        "sidebar": "#242424" if dark else "#eeedeb",
+        "sidebar_border": "#383838" if dark else "#d5d4d2",
+        "sidebar_text": "#dedede" if dark else "#454545",
+        "sidebar_hover": "#353535" if dark else "#deddda",
+        "sidebar_checked": "#404040" if dark else "#d5d4d2",
         "accent": "#777f8c",
         "accent_text": "#ffffff",
         "disabled": "#888888",
@@ -92,24 +97,24 @@ def get_stylesheet(dark: bool) -> str:
 
         /* Sidebar */
         QWidget#sidebar {{
-            background-color: #242424;
-            border-right: 1px solid #383838;
+            background-color: {colors["sidebar"]};
+            border-right: 1px solid {colors["sidebar_border"]};
         }}
 
         QWidget#sidebar QPushButton {{
             background-color: transparent;
-            color: #dedede;
+            color: {colors["sidebar_text"]};
             border: none;
             border-radius: 9px;
             padding: 0px;
         }}
 
         QWidget#sidebar QPushButton:hover {{
-            background-color: #353535;
+            background-color: {colors["sidebar_hover"]};
         }}
 
         QWidget#sidebar QPushButton:checked {{
-            background-color: #404040;
+            background-color: {colors["sidebar_checked"]};
         }}
 
         /* Date fields */
