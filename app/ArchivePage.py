@@ -23,6 +23,7 @@ from .AlertDialog import AlertDialog
 from .ConcertFilterProxyModel import ConcertFilterProxyModel
 from .ConcertTableModel import ConcertTableModel
 from .ConfirmDialog import ConfirmDialog
+from .MultiSelectComboBox import MultiSelectComboBox
 from .RangeSlider import RangeSlider
 
 
@@ -183,27 +184,35 @@ class ArchivePage(QWidget):
         text_filter_layout.setSpacing(8)
 
         for column, label in text_columns.items():
-            value_combo = QComboBox()
-            value_combo.setEditable(True)
-            value_combo.addItem("")
-            value_combo.addItems(self.get_column_values(column))
-            value_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-            value_combo.setPlaceholderText(label)
+            if column == 1:  # Institution
+                value_combo = MultiSelectComboBox()
+                value_combo.set_options(self.get_column_values(column))
 
-            value_combo.currentTextChanged.connect(
-                lambda value, col=column: self.update_text_filter(col)
-            )
+                value_combo.selectionChanged.connect(self.update_institution_filter)
 
-            if column == 2:  # Title
-                mode_combo = QComboBox()
-                mode_combo.addItem("Contiene", "contains")
-                mode_combo.addItem("Uguale a", "exact")
+                mode_combo = None
+            else:
+                value_combo = QComboBox()
+                value_combo.setEditable(True)
+                value_combo.addItem("")
+                value_combo.addItems(self.get_column_values(column))
+                value_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+                value_combo.setPlaceholderText(label)
 
-                mode_combo.currentIndexChanged.connect(
+                value_combo.currentTextChanged.connect(
                     lambda value, col=column: self.update_text_filter(col)
                 )
-            else:
-                mode_combo = None
+
+                if column == 2:  # Title
+                    mode_combo = QComboBox()
+                    mode_combo.addItem("Contiene", "contains")
+                    mode_combo.addItem("Uguale a", "exact")
+
+                    mode_combo.currentIndexChanged.connect(
+                        lambda value, col=column: self.update_text_filter(col)
+                    )
+                else:
+                    mode_combo = None
 
             self.text_filters[column] = (value_combo, mode_combo)
 
@@ -490,6 +499,9 @@ class ArchivePage(QWidget):
 
         self.proxy_model.set_column_filter(column, value, mode)
 
+    def update_institution_filter(self, values):
+        self.proxy_model.set_column_filter(1, values, "any")
+
     def refresh_filter_values(self):
         ### Refresh price filter ###
         # Current slider range
@@ -582,8 +594,11 @@ class ArchivePage(QWidget):
         )
 
         # Text
-        for value_combo, mode_combo in self.text_filters.values():
-            value_combo.setCurrentText("")
+        for column, (value_combo, mode_combo) in self.text_filters.items():
+            if column == 1:
+                value_combo.clear()
+            else:
+                value_combo.setCurrentText("")
 
             if mode_combo is not None:
                 mode_combo.setCurrentIndex(0)

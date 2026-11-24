@@ -217,6 +217,37 @@ def get_stylesheet(dark: bool) -> str:
             padding: 5px;
         }}
 
+        /* Multi-select list */
+        QListWidget {{
+            background-color: {colors["surface"]};
+            color: {colors["text"]};
+            border: 1px solid {colors["border"]};
+            border-radius: 5px;
+            outline: none;
+        }}
+
+        QListWidget::item {{
+            padding: 4px;
+        }}
+
+        QListWidget::item:selected {{
+            background-color: {colors["alternate"]};
+            color: {colors["text"]};
+        }}
+
+        QListWidget::indicator {{
+            width: 14px;
+            height: 14px;
+            border: 1px solid {colors["disabled"]};
+            border-radius: 3px;
+            background-color: {colors["surface"]};
+        }}
+
+        QListWidget::indicator:checked {{
+            background-color: {colors["accent"]};
+            border: 1px solid {colors["accent"]};
+        }}
+
         /* Dropdown menus */
         QComboBox {{
             background-color: {colors["button"]};
@@ -268,6 +299,35 @@ def get_stylesheet(dark: bool) -> str:
             color: {colors["text"]};
             border: none;
             padding: 0px;
+        }}
+
+        /* Multi-select filter */
+        QWidget#multiSelectComboBox QLineEdit {{
+            background-color: {colors["button"]};
+            color: {colors["text"]};
+            border: 1px solid {colors["border"]};
+            border-radius: 5px;
+            padding: 2px 8px;
+        }}
+
+        QWidget#multiSelectComboBox QLineEdit:hover {{
+            background-color: {colors["button_hover"]};
+        }}
+
+        QWidget#multiSelectComboBox QLineEdit:focus {{
+            border: 1px solid {colors["accent"]};
+        }}
+
+        QWidget#multiSelectComboBox QToolButton {{
+            background-color: {colors["button"]};
+            color: {colors["text"]};
+            border: 1px solid {colors["border"]};
+            border-radius: 5px;
+            padding: 2px 6px;
+        }}
+
+        QWidget#multiSelectComboBox QToolButton:hover {{
+            background-color: {colors["button_hover"]};
         }}
     """
 

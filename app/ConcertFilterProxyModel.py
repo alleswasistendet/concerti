@@ -47,15 +47,23 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
         self.invalidate()
 
     def set_column_filter(self, column, value, mode="contains"):
-        """Set a text filter for a column, either exact or by partial content's match."""
+        """Set a text filter for a column."""
 
         if not value:
             self.column_filters.pop(column, None)
         else:
-            if mode not in ("exact", "contains", "all_words"):
+            if mode not in ("exact", "contains", "all_words", "any"):
                 raise ValueError(
                     "Sono ammessi solo filtri esatti o per corrispondenza parziale."
                 )
+
+            if mode == "any":
+                value = tuple(value)
+
+                if not value:
+                    self.column_filters.pop(column, None)
+                    self.invalidate()
+                    return
 
             self.column_filters[column] = (mode, value)
 
@@ -125,5 +133,10 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
 
                 if not all(word in text for word in words):
                     return False
+
+            elif mode == "any" and (
+                not any(option.casefold() == value.casefold() for option in target)
+            ):
+                return False
 
         return True
