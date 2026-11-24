@@ -1,5 +1,8 @@
 import sys
+from pathlib import Path
 
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -9,6 +12,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QStackedWidget,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -37,10 +41,12 @@ class ConcertiApp(QMainWindow):
 
         # Sidebar
         sidebar = QWidget()
-        sidebar.setFixedWidth(220)
+        sidebar.setFixedWidth(64)
+
+        sidebar.setObjectName("sidebar")
 
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(16, 24, 16, 16)
+        sidebar_layout.setContentsMargins(6, 24, 6, 16)
 
         sidebar_layout.addSpacing(30)
 
@@ -58,19 +64,32 @@ class ConcertiApp(QMainWindow):
             ("Archivio", self.archive_page),  # Archive page
         ]
 
+        icon_path = Path(__file__).resolve().parent / "icons"
+        icons = [icon_path / "layout-dashboard.svg", icon_path / "archive.svg"]
+
         for index, (name, page) in enumerate(sections):
-            button = QPushButton(name)
+            button = QPushButton()
             button.setCheckable(True)
+            button.setFixedSize(48, 48)
+            button.setIcon(QIcon(str(icons[index])))
+            button.setIconSize(QSize(24, 24))
+            button.setToolTip(name)
 
             self.navigation.addButton(button, index)
-            sidebar_layout.addWidget(button)
+            sidebar_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignCenter)
 
             self.pages.addWidget(page)
 
-        # New concert button
-        self.new_concert_button = QPushButton("Nuovo evento")
+        # New event button
+        self.new_concert_button = QPushButton("")
+        self.new_concert_button.setFixedSize(48, 48)
+        self.new_concert_button.setIcon(QIcon(str(icon_path / "plus.svg")))
+        self.new_concert_button.setIconSize(QSize(24, 24))
+        self.new_concert_button.setToolTip("Nuovo evento")
         self.new_concert_button.clicked.connect(self.open_new_concert_dialog)
-        sidebar_layout.addWidget(self.new_concert_button)
+        sidebar_layout.addWidget(
+            self.new_concert_button, alignment=Qt.AlignmentFlag.AlignCenter
+        )
 
         sidebar_layout.addStretch()
 
@@ -112,7 +131,7 @@ class ConcertiApp(QMainWindow):
                 add_concert(concert)
                 self.archive_page.reload_concerts()
 
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001
                 QMessageBox.critical(
                     self,
                     "Errore",
@@ -129,7 +148,7 @@ class ConcertiApp(QMainWindow):
                 update_concert(concert_id, updated_concert)
                 self.archive_page.reload_concerts()
 
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001
                 QMessageBox.critical(
                     self,
                     "Errore",

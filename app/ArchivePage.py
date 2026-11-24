@@ -1,4 +1,4 @@
-from PySide6.QtCore import QDate, QEasingCurve, QPropertyAnimation, Qt, Signal
+from PySide6.QtCore import QDate, QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -62,19 +62,23 @@ class ArchivePage(QWidget):
         # Assign proxy model to table
         self.table.setModel(self.proxy_model)
 
+        # Header
+        header = self.table.horizontalHeader()
+
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(50)
+
+        self.table.setHorizontalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
+
+        self._columns_initialized = False
+
         # Double click to update a selected line
         self.table.doubleClicked.connect(self.edit_concert)
 
         # Table
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-
-        header = self.table.horizontalHeader()
-        self.table.resizeColumnsToContents()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        header.setStretchLastSection(True)
-
-        self.table.setHorizontalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
 
         ### Filters ###
 
@@ -284,6 +288,7 @@ class ArchivePage(QWidget):
         ### Buttons ###
         # Delete button
         self.delete_button = QPushButton("Elimina")
+        self.delete_button.setObjectName("delete_button")
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self.delete_selected_concerts)
 
@@ -294,21 +299,23 @@ class ArchivePage(QWidget):
         delete_button_layout.addWidget(self.delete_button)
 
         # Toggle filters button
-        self.toggle_filters_buttom = QPushButton("Filtri")
-        self.toggle_filters_buttom.clicked.connect(self.toggle_filters)
+        self.toggle_filters_button = QPushButton("Filtri")
+        self.toggle_filters_button.setObjectName("toggle_filters_button")
+        self.toggle_filters_button.clicked.connect(self.toggle_filters)
 
         # Reset filters button
         self.reset_filters_button = QPushButton("Reset")
+        self.reset_filters_button.setObjectName("reset_filters_button")
         self.reset_filters_button.clicked.connect(self.reset_filters)
 
         ### Page layout ###
         header_layout = QHBoxLayout()
         header_layout.addWidget(heading)
         header_layout.addStretch()
-        header_layout.addWidget(self.toggle_filters_buttom)
+        header_layout.addWidget(self.toggle_filters_button)
         header_layout.addWidget(self.reset_filters_button)
         header_layout.addStretch()
-        header_layout.addWidget(self.toggle_filters_buttom)
+        header_layout.addWidget(self.toggle_filters_button)
 
         layout.addLayout(header_layout)
         layout.addWidget(self.filter_panel)
@@ -326,6 +333,27 @@ class ArchivePage(QWidget):
     ###############
     ### Methods ###
     ###############
+
+    def adjust_column_width(self):
+        # Width of the first six columns based on their content
+        for column in range(6):
+            self.table.resizeColumnToContents(column)
+
+        # Remaining space is equally shared by last two columns
+        remaining_width = self.table.viewport().width() - sum(
+            self.table.columnWidth(column) for column in range(6)
+        )
+        column_width = max(50, remaining_width // 2)
+
+        self.table.setColumnWidth(6, column_width)
+        self.table.setColumnWidth(7, column_width)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        if not self._columns_initialized:
+            QTimer.singleShot(0, self.adjust_column_width)
+            self._columns_initialized = True
 
     def reload_concerts(self):
         self.model.beginResetModel()
@@ -521,11 +549,11 @@ class ArchivePage(QWidget):
         if self.filter_panel.maximumHeight() == 0:
             self.filters_animation.setStartValue(0)
             self.filters_animation.setEndValue(self.filter_panel.sizeHint().height())
-            self.toggle_filters_buttom.setText("Nascondi filtri")
+            self.toggle_filters_button.setText("Nascondi filtri")
         else:
             self.filters_animation.setStartValue(self.filter_panel.maximumHeight())
             self.filters_animation.setEndValue(0)
-            self.toggle_filters_buttom.setText("Filtri")
+            self.toggle_filters_button.setText("Filtri")
 
         self.filters_animation.start()
 
