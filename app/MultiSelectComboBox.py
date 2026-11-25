@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeyEvent
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -14,6 +14,109 @@ from PySide6.QtWidgets import (
 )
 
 from .theme import is_dark_mode
+
+
+class MultiSelectListWidget(QListWidget):
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_Space:
+            item = self.currentItem()
+
+            if item is not None:
+                state = (
+                    Qt.CheckState.Unchecked
+                    if item.checkState() == Qt.CheckState.Checked
+                    else Qt.CheckState.Checked
+                )
+                item.setCheckState(state)
+            return
+
+        if event.key() == Qt.Key.Key_Escape:
+            self.window().hide()
+            return
+
+        super().keyPressEvent(event)
+
+
+class MultiSelectSearchEdit(QLineEdit):
+    def __init__(self, combo, parent=None):
+        super().__init__(parent)
+        self.combo = combo
+        self.list_has_focus = False
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        list_widget = self.combo.list_widget
+
+        if key == Qt.Key.Key_Escape:
+            self.combo.close_popup()
+            return
+
+        if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+            if not self.combo.popup.isVisible():
+                self.combo.show_popup()
+                self.list_has_focus = True
+
+                visible_items = [
+                    list_widget.item(i)
+                    for i in range(list_widget.count())
+                    if not list_widget.item(i).isHidden()
+                ]
+
+                if visible_items:
+                    target = (
+                        visible_items[0]
+                        if key == Qt.Key.Key_Down
+                        else visible_items[-1]
+                    )
+                    list_widget.setCurrentItem(target)
+
+                return
+
+            visible_items = [
+                list_widget.item(i)
+                for i in range(list_widget.count())
+                if not list_widget.item(i).isHidden()
+            ]
+
+            if not visible_items:
+                return
+
+            current = list_widget.currentItem()
+
+            if not self.list_has_focus:
+                self.list_has_focus = True
+                target = (
+                    visible_items[0] if key == Qt.Key.Key_Down else visible_items[-1]
+                )
+            else:
+                current_index = (
+                    visible_items.index(current) if current in visible_items else -1
+                )
+                next_index = current_index + (1 if key == Qt.Key.Key_Down else -1)
+                next_index = max(0, min(next_index, len(visible_items) - 1))
+                target = visible_items[next_index]
+
+            list_widget.setCurrentItem(target)
+            return
+
+        if key == Qt.Key.Key_Space:
+            if not self.combo.popup.isVisible():
+                self.combo.show_popup()
+                return
+
+            if self.list_has_focus:
+                current_item = self.combo.list_widget.currentItem()
+
+                if current_item is not None:
+                    state = (
+                        Qt.CheckState.Unchecked
+                        if current_item.checkState() == Qt.CheckState.Checked
+                        else Qt.CheckState.Checked
+                    )
+                    current_item.setCheckState(state)
+                return
+
+        super().keyPressEvent(event)
 
 
 class MultiSelectComboBox(QWidget):
@@ -34,7 +137,7 @@ class MultiSelectComboBox(QWidget):
         layout.setSpacing(4)
 
         # Search field
-        self.search_edit = QLineEdit()
+        self.search_edit = MultiSelectSearchEdit(self)
         self.search_edit.setPlaceholderText("Cerca...")
         self.search_edit.textEdited.connect(self.on_search_text_changed)
 
@@ -57,14 +160,13 @@ class MultiSelectComboBox(QWidget):
 
         # Popup
         self.popup = QFrame(self, Qt.WindowType.Popup)
-        # self.popup.setObjectName("multi_select_popup")
         self.popup.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.popup.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         popup_layout = QVBoxLayout(self.popup)
         popup_layout.setContentsMargins(4, 4, 4, 4)
 
-        self.list_widget = QListWidget()
+        self.list_widget = MultiSelectListWidget()
         self.list_widget.itemChanged.connect(self.on_item_changed)
 
         popup_layout.addWidget(self.list_widget)
@@ -176,8 +278,7 @@ class MultiSelectComboBox(QWidget):
 
     def toggle_popup(self):
         if self.popup.isVisible():
-            self.search_edit.releaseKeyboard()
-            self.popup.hide()
+            self.close_popup()
         else:
             self.show_popup()
 
@@ -199,3 +300,7 @@ class MultiSelectComboBox(QWidget):
 
         self.search_edit.setFocus(Qt.FocusReason.OtherFocusReason)
         self.search_edit.grabKeyboard()
+
+    def close_popup(self):
+        self.search_edit.releaseKeyboard()
+        self.popup.hide()

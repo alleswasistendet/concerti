@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from database.database import add_concert, update_concert
 
+from .AlertDialog import AlertDialog
 from .ArchivePage import ArchivePage
 from .ConcertDialog import ConcertDialog
 from .theme import apply_theme, is_dark_mode
@@ -137,11 +138,12 @@ class ConcertiApp(QMainWindow):
                 self.archive_page.reload_concerts()
 
             except Exception as error:  # noqa: BLE001
-                QMessageBox.critical(
-                    self,
-                    "Errore",
-                    f"Impossibile salvare l'evento:\n{error}",
+                dialog = AlertDialog(
+                    title="Errore",
+                    message=f"Impossibile salvare l'evento:\n{error}",
+                    parent=self,
                 )
+                dialog.exec()
 
     def open_edit_concert_dialog(self, concert_id, concert):
         dialog = ConcertDialog(concert, parent=self)
@@ -154,11 +156,12 @@ class ConcertiApp(QMainWindow):
                 self.archive_page.reload_concerts()
 
             except Exception as error:  # noqa: BLE001
-                QMessageBox.critical(
-                    self,
-                    "Errore",
-                    f"Impossibile aggiornare l'evento:\n{error}",
+                dialog = AlertDialog(
+                    title="Errore",
+                    message=f"Impossibile aggiornare l'evento:\n{error}",
+                    parent=self,
                 )
+                dialog.exec()
 
 
 if __name__ == "__main__":

@@ -546,14 +546,22 @@ class ArchivePage(QWidget):
 
         ### Refresh text filters ###
         for column, (value_combo, _) in self.text_filters.items():
-            current_value = value_combo.currentText()
+            if isinstance(value_combo, MultiSelectComboBox):
+                current_values = value_combo.selected_values()
 
-            value_combo.blockSignals(True)
-            value_combo.clear()
-            value_combo.addItem("")
-            value_combo.addItems(self.get_column_values(column))
-            value_combo.setCurrentText(current_value)
-            value_combo.blockSignals(False)
+                value_combo.blockSignals(True)
+                value_combo.set_options(self.get_column_values(column))
+                value_combo.set_selected_values(current_values)
+                value_combo.blockSignals(False)
+            else:
+                current_value = value_combo.currentText()
+
+                value_combo.blockSignals(True)
+                value_combo.clear()
+                value_combo.addItem("")
+                value_combo.addItems(self.get_column_values(column))
+                value_combo.setCurrentText(current_value)
+                value_combo.blockSignals(False)
 
     def toggle_filters(self):
         self.filters_animation.stop()

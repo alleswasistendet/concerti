@@ -1,5 +1,6 @@
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
+    QComboBox,
     QDateEdit,
     QDialog,
     QDoubleSpinBox,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.Concert import Concert
+from database.typologies import load_typologies
 
 from .AlertDialog import AlertDialog
 
@@ -54,10 +56,17 @@ class ConcertDialog(QDialog):
         self.price_edit.setSuffix(" €")
 
         # Typology
-        self.typology_edit = QLineEdit()
+        self.typologies = load_typologies()
+
+        self.typology_edit = QComboBox()
+        self.typology_edit.addItem("")
+        self.typology_edit.addItems(self.typologies.keys())
 
         # Subtypology
-        self.subtypology_edit = QLineEdit()
+        self.subtypology_edit = QComboBox()
+        self.subtypology_edit.addItem("")
+
+        self.typology_edit.currentTextChanged.connect(self.update_subtypologies)
 
         # Program
         self.program_edit = QTextEdit()
@@ -107,8 +116,21 @@ class ConcertDialog(QDialog):
         self.institution_edit.setText(concert.institution or "")
         self.title_edit.setText(concert.title)
         self.price_edit.setValue(concert.price or 0.0)
-        self.typology_edit.setText(concert.typology or "")
-        self.subtypology_edit.setText(concert.subtypology or "")
+
+        typology = concert.typology or ""
+
+        if typology and self.typology_edit.findText(typology) == -1:
+            self.typology_edit.addItem(typology)
+
+        self.typology_edit.setCurrentText(typology)
+
+        subtypology = concert.subtypology or ""
+
+        if subtypology and self.subtypology_edit.findText(subtypology) == -1:
+            self.subtypology_edit.addItem(subtypology)
+
+        self.subtypology_edit.setCurrentText(subtypology)
+
         self.program_edit.setPlainText(concert.program or "")
         self.comment_edit.setPlainText(concert.comment or "")
 
@@ -118,8 +140,8 @@ class ConcertDialog(QDialog):
             title=self.title_edit.text().strip(),
             institution=self.institution_edit.text().strip() or None,
             price=self.price_edit.value(),
-            typology=self.typology_edit.text().strip() or None,
-            subtypology=self.subtypology_edit.text().strip() or None,
+            typology=self.typology_edit.currentText().strip() or None,
+            subtypology=self.subtypology_edit.currentText().strip() or None,
             program=self.program_edit.toPlainText().strip() or None,
             comment=self.comment_edit.toPlainText().strip() or None,
         )
@@ -136,3 +158,10 @@ class ConcertDialog(QDialog):
             return
 
         self.accept()
+
+    def update_subtypologies(self, typology):
+        self.subtypology_edit.clear()
+        self.subtypology_edit.addItem("")
+
+        subtypologies = self.typologies.get(typology, [])
+        self.subtypology_edit.addItems(subtypologies)
