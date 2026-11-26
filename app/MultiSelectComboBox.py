@@ -130,11 +130,12 @@ class MultiSelectComboBox(QWidget):
         self._selected = set()
 
         self.setObjectName("multiSelectComboBox")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         # Main layout
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setSpacing(0)
 
         # Search field
         self.search_edit = MultiSelectSearchEdit(self)
@@ -145,6 +146,7 @@ class MultiSelectComboBox(QWidget):
 
         # Dropdown button
         self.dropdown_button = QToolButton()
+        self.dropdown_button.setFixedWidth(22)
         self.dropdown_button.setToolTip("Seleziona elementi")
         self.dropdown_button.clicked.connect(self.toggle_popup)
 

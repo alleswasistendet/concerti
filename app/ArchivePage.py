@@ -453,14 +453,16 @@ class ArchivePage(QWidget):
 
         if month is not None and year is None:
             if source == "month":
+                self.month_year_check.blockSignals(True)
+                self.month_year_check.setChecked(False)
+                self.month_year_check.blockSignals(False)
+
                 dialog = AlertDialog(
                     title="Filtro non valido",
                     message="Seleziona un anno.",
                     parent=self,
                 )
                 dialog.exec()
-
-                self.month_combo.setCurrentIndex(0)
 
             self.proxy_model.set_month_year()
             return
@@ -505,14 +507,20 @@ class ArchivePage(QWidget):
             mode = mode_combo.currentData()  # Title
 
         self.proxy_model.set_column_filter(column, value, mode)
-        self.refresh_filter_options()
+        self.refresh_filter_options(excluded_column=column)
 
     def update_institution_filter(self, values):
         self.proxy_model.set_column_filter(1, values, "any")
-        self.refresh_filter_options()
+        self.refresh_filter_options(excluded_column=1)
 
-    def refresh_filter_options(self):
+    def refresh_filter_options(self, excluded_column=None):
+        if not hasattr(self, "text_filters"):
+            return
+
         for column, (value_combo, _) in self.text_filters.items():
+            if column == excluded_column:
+                continue
+
             new_options = self.get_column_values(column)
 
             if isinstance(value_combo, MultiSelectComboBox):

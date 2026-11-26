@@ -302,27 +302,29 @@ def get_stylesheet(dark: bool) -> str:
         }}
 
         /* Multi-select filter */
-        QWidget#multiSelectComboBox QLineEdit {{
+        QWidget#multiSelectComboBox {{
             background-color: {colors["button"]};
-            color: {colors["text"]};
             border: 1px solid {colors["border"]};
             border-radius: 5px;
+        }}
+
+        QWidget#multiSelectComboBox QLineEdit {{
+            background-color: transparent;
+            color: {colors["text"]};
+            border: none;
             padding: 2px 8px;
         }}
 
-        QWidget#multiSelectComboBox QLineEdit:hover {{
-            background-color: {colors["button_hover"]};
-        }}
-
         QWidget#multiSelectComboBox QLineEdit:focus {{
-            border: 1px solid {colors["accent"]};
+            border: none;
         }}
 
         QWidget#multiSelectComboBox QToolButton {{
-            background-color: {colors["button"]};
+            background-color: transparent;
             color: {colors["text"]};
-            border: 1px solid {colors["border"]};
-            border-radius: 5px;
+            border: none;
+            border-left: 1px solid {colors["border"]};
+            border-radius: 0px;
             padding: 2px 6px;
         }}
 
