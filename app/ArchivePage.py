@@ -71,6 +71,7 @@ class ArchivePage(QWidget):
         header.setMinimumSectionSize(50)
 
         self.table.setHorizontalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
+        self.table.setVerticalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
 
         self._columns_initialized = False
 
@@ -318,14 +319,21 @@ class ArchivePage(QWidget):
         self.reset_filters_button.clicked.connect(self.reset_filters)
 
         ### Page layout ###
-        header_layout = QHBoxLayout()
-        header_layout.addWidget(heading)
-        header_layout.addStretch()
-        header_layout.addWidget(self.toggle_filters_button)
-        header_layout.addWidget(self.reset_filters_button)
-        header_layout.addStretch()
-        header_layout.addWidget(self.toggle_filters_button)
+        header_layout = QGridLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setHorizontalSpacing(12)
 
+        header_layout.addWidget(
+            self.toggle_filters_button, 0, 0, alignment=Qt.AlignmentFlag.AlignRight
+        )
+        header_layout.addWidget(
+            self.reset_filters_button, 0, 1, alignment=Qt.AlignmentFlag.AlignLeft
+        )
+
+        header_layout.setColumnStretch(0, 1)
+        header_layout.setColumnStretch(1, 1)
+
+        layout.addWidget(heading)
         layout.addLayout(header_layout)
         layout.addWidget(self.filter_panel)
         layout.addLayout(delete_button_layout)

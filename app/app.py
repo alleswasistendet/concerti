@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -9,7 +9,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QStackedWidget,
     QVBoxLayout,
@@ -28,8 +27,16 @@ class ConcertiApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.settings = QSettings("PythonConcerti", "Concerti")
+
+        geometry = self.settings.value("window/geometry")
+
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.resize(1600, 960)
+
         self.setWindowTitle("Concerti")
-        self.resize(1600, 960)
 
         # Principal widget
         central_widget = QWidget()
@@ -162,6 +169,10 @@ class ConcertiApp(QMainWindow):
                     parent=self,
                 )
                 dialog.exec()
+
+    def closeEvent(self, event):
+        self.settings.setValue("window/geometry", self.saveGeometry())
+        event.accept()
 
 
 if __name__ == "__main__":
