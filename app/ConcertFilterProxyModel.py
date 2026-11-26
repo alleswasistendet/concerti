@@ -70,6 +70,9 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
         self.invalidate()
 
     def filterAcceptsRow(self, source_row, source_parent):
+        return self.row_matches_filters(source_row)
+
+    def row_matches_filters(self, source_row, excluded_column=None):
         model = self.sourceModel()
         concert = model.concerts[source_row][1]
         concert_date = QDate.fromString(
@@ -114,6 +117,9 @@ class ConcertFilterProxyModel(QSortFilterProxyModel):
 
         # Column filters
         for column, (mode, target) in self.column_filters.items():
+            if column == excluded_column:
+                continue
+
             index = model.index(source_row, column)
             value = model.data(index, Qt.ItemDataRole.DisplayRole)
 

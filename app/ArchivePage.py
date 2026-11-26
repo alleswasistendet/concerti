@@ -379,14 +379,18 @@ class ArchivePage(QWidget):
         self.edit_requested.emit(concert_id, concert)
 
     def get_column_values(self, column):
-        values = {
-            self.model.data(
-                self.model.index(row, column),
-            )
-            for row in range(self.model.rowCount())
-        }
+        values = set()
 
-        unique_values = {value.casefold(): value for value in values if value}
+        for row in range(self.model.rowCount()):
+            if not self.proxy_model.row_matches_filters(row, excluded_column=column):
+                continue
+
+            value = self.model.data(self.model.index(row, column))
+
+            if value:
+                values.add(value)
+
+        unique_values = {value.casefold(): value for value in values}
 
         return sorted(unique_values.values(), key=str.casefold)
 
@@ -431,6 +435,7 @@ class ArchivePage(QWidget):
         date_to = self.date_to_edit.date() if self.date_to_check.isChecked() else None
 
         self.proxy_model.set_date_range(date_from, date_to)
+        self.refresh_filter_options()
 
     def update_month_year_filter(self, source=None):
         # Enable filter
@@ -461,11 +466,13 @@ class ArchivePage(QWidget):
             return
 
         self.proxy_model.set_month_year(month=month, year=year)
+        self.refresh_filter_options()
 
     def update_price_filter(self, min_price, max_price):
         self.price_min_label.setText(f"{min_price / 100:.2f} €")
         self.price_max_label.setText(f"{max_price / 100:.2f} €")
         self.proxy_model.set_price_range(min_price / 100, max_price / 100)
+        self.refresh_filter_options()
 
     def update_price_slider_range(self):
         prices = [
@@ -498,9 +505,32 @@ class ArchivePage(QWidget):
             mode = mode_combo.currentData()  # Title
 
         self.proxy_model.set_column_filter(column, value, mode)
+        self.refresh_filter_options()
 
     def update_institution_filter(self, values):
         self.proxy_model.set_column_filter(1, values, "any")
+        self.refresh_filter_options()
+
+    def refresh_filter_options(self):
+        for column, (value_combo, _) in self.text_filters.items():
+            new_options = self.get_column_values(column)
+
+            if isinstance(value_combo, MultiSelectComboBox):
+                current_values = value_combo.selected_values()
+
+                value_combo.blockSignals(True)
+                value_combo.set_options(new_options)
+                value_combo.set_selected_values(current_values)
+                value_combo.blockSignals(False)
+            else:
+                current_value = value_combo.currentText()
+
+                value_combo.blockSignals(True)
+                value_combo.clear()
+                value_combo.addItem("")
+                value_combo.addItems(new_options)
+                value_combo.setCurrentText(current_value)
+                value_combo.blockSignals(False)
 
     def refresh_filter_values(self):
         ### Refresh price filter ###
