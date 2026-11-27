@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,7 +20,18 @@ from database.database import add_concert, update_concert
 from .AlertDialog import AlertDialog
 from .ArchivePage import ArchivePage
 from .ConcertDialog import ConcertDialog
+from .DashboardPage import DashboardPage
 from .theme import apply_theme, is_dark_mode
+
+
+class ResponsiveStackedWidget(QStackedWidget):
+    def minimumSizeHint(self):
+        current_widget = self.currentWidget()
+
+        if current_widget is None:
+            return QSize(0, 0)
+
+        return current_widget.minimumSize()
 
 
 class ConcertiApp(QMainWindow):
@@ -61,14 +72,16 @@ class ConcertiApp(QMainWindow):
         self.navigation = QButtonGroup(self)
         self.navigation.setExclusive(True)  # No multiple button selection admitted
 
-        self.pages = QStackedWidget()
+        self.pages = ResponsiveStackedWidget()
 
         self.archive_page = ArchivePage()
         self.archive_page.edit_requested.connect(self.open_edit_concert_dialog)
 
+        self.dashboard_page = DashboardPage()
+
         sections = [
-            ("Dashboard", self.create_page("Dashboard", "")),  # Dashboard page
-            ("Archivio", self.archive_page),  # Archive page
+            ("Dashboard", self.dashboard_page),
+            ("Archivio", self.archive_page),
         ]
 
         icon_theme = "dark" if is_dark_mode() else "light"
@@ -107,7 +120,7 @@ class ConcertiApp(QMainWindow):
         sidebar_layout.addStretch()
 
         # Link between navigation and pages
-        self.navigation.idClicked.connect(self.pages.setCurrentIndex)
+        self.navigation.idClicked.connect(self.change_page)
 
         self.navigation.button(0).setChecked(True)  # Set the default page
 
@@ -115,8 +128,9 @@ class ConcertiApp(QMainWindow):
         main_layout.addWidget(sidebar)
         main_layout.addWidget(self.pages)
 
-    def create_page(self, title, description):
+        # QTimer.singleShot(0, self.archive_page.update_filter_panel_minimum_height)
 
+    def create_page(self, title, description):
         page = QWidget()
         layout = QVBoxLayout(page)
 
@@ -133,6 +147,10 @@ class ConcertiApp(QMainWindow):
         layout.addStretch()
 
         return page
+
+    def change_page(self, index):
+        self.pages.setCurrentIndex(index)
+        self.update_window_minimum_height()
 
     def open_new_concert_dialog(self):
         dialog = ConcertDialog(parent=self)
@@ -169,6 +187,13 @@ class ConcertiApp(QMainWindow):
                     parent=self,
                 )
                 dialog.exec()
+
+    def update_window_minimum_height(self):
+        current_page = self.pages.currentWidget()
+
+        window_chrome = self.height() - self.centralWidget().height()
+
+        self.setMinimumHeight(current_page.minimumSizeHint().height() + window_chrome)
 
     def closeEvent(self, event):
         self.settings.setValue("window/geometry", self.saveGeometry())

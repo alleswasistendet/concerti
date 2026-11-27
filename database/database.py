@@ -104,6 +104,21 @@ def get_concert(concert_id: int) -> tuple[int, Concert] | None:
         return row[0], convert_to_concert(row)
 
 
+def get_latest_concerts(limit: int = 10) -> list[tuple[int, Concert]]:
+    """Return the concerts with the latest dates."""
+
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            """
+            SELECT * FROM concerts
+            ORDER BY concert_date DESC, id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [(row[0], convert_to_concert(row)) for row in cursor.fetchall()]
+
+
 def update_concert(
     concert_id: int,
     concert: Concert,

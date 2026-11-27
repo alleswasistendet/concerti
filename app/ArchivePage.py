@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from database.database import delete_concert, get_concerts
+from database.statistics import compute_statistics
 
 from .AlertDialog import AlertDialog
 from .ConcertFilterProxyModel import ConcertFilterProxyModel
@@ -40,7 +41,7 @@ class ArchivePage(QWidget):
         layout.setSpacing(16)
 
         heading = QLabel("Archivio")
-        heading.setObjectName("page_title")
+        heading.setObjectName("pageHeading")
 
         ### Table layout ###
 
@@ -72,6 +73,12 @@ class ArchivePage(QWidget):
 
         self.table.setHorizontalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
         self.table.setVerticalScrollMode(QTableView.ScrollMode.ScrollPerPixel)
+
+        self.table.setMinimumHeight(
+            header.sizeHint().height()
+            + 2 * self.table.frameWidth()
+            + 2 * self.table.verticalHeader().defaultSectionSize()
+        )
 
         self._columns_initialized = False
 
@@ -276,12 +283,17 @@ class ArchivePage(QWidget):
         self.filter_panel = QWidget()
         self.filter_panel.setLayout(filters_layout)
         self.filter_panel.setMaximumHeight(0)
+        self.filter_panel.setMinimumHeight(0)
 
         self.filters_animation = QPropertyAnimation(
             self.filter_panel, b"maximumHeight", self
         )
         self.filters_animation.setDuration(250)
         self.filters_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+        self.filters_animation.finished.connect(self.filter_panel.updateGeometry)
+        self.filters_animation.finished.connect(self.updateGeometry)
+        self.filters_animation.finished.connect(self.update_filter_panel_minimum_height)
 
         ### Statistics ###
 
@@ -351,6 +363,13 @@ class ArchivePage(QWidget):
     ### Methods ###
     ###############
 
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        if not self._columns_initialized:
+            QTimer.singleShot(0, self.adjust_column_width)
+            self._columns_initialized = True
+
     def adjust_column_width(self):
         # Width of the first six columns based on their content
         for column in range(6):
@@ -364,13 +383,6 @@ class ArchivePage(QWidget):
 
         self.table.setColumnWidth(6, column_width)
         self.table.setColumnWidth(7, column_width)
-
-    def showEvent(self, event):
-        super().showEvent(event)
-
-        if not self._columns_initialized:
-            QTimer.singleShot(0, self.adjust_column_width)
-            self._columns_initialized = True
 
     def reload_concerts(self):
         self.model.beginResetModel()
@@ -617,6 +629,7 @@ class ArchivePage(QWidget):
             self.filters_animation.setEndValue(self.filter_panel.sizeHint().height())
             self.toggle_filters_button.setText("Nascondi filtri")
         else:
+            self.filter_panel.setMinimumHeight(0)
             self.filters_animation.setStartValue(self.filter_panel.maximumHeight())
             self.filters_animation.setEndValue(0)
             self.toggle_filters_button.setText("Filtri")
@@ -665,28 +678,28 @@ class ArchivePage(QWidget):
         for column in self.text_filters:
             self.proxy_model.set_column_filter(column, "")
 
+    def update_filter_panel_minimum_height(self):
+        if self.filter_panel.maximumHeight() == 0:
+            self.filter_panel.setMinimumHeight(0)
+        else:
+            self.filter_panel.setMinimumHeight(self.filter_panel.sizeHint().height())
+
+        self.updateGeometry()
+
+        window = self.window()
+
+        if window.pages.currentWidget() is self:
+            window.update_window_minimum_height()
+
     def compute_statistics(self):
-        event_count = self.proxy_model.rowCount()
-        total_price = 0.0
+        concerts = [
+            self.model.concerts[
+                self.proxy_model.mapToSource(self.proxy_model.index(row, 0)).row()
+            ][1]
+            for row in range(self.proxy_model.rowCount())
+        ]
 
-        for row in range(event_count):
-            proxy_index = self.proxy_model.index(row, 0)
-            source_index = self.proxy_model.mapToSource(proxy_index)
-
-            concert = self.model.concerts[source_index.row()][1]
-
-            if concert.price is None:
-                continue
-
-            total_price += concert.price
-
-        average_price = total_price / event_count if event_count > 0 else None
-
-        return {
-            "event_count": event_count,
-            "total_price": total_price,
-            "average_price": average_price,
-        }
+        return compute_statistics(concerts)
 
     def update_statistics(self):
         statistics = self.compute_statistics()

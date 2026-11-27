@@ -72,6 +72,13 @@ def get_stylesheet(dark: bool) -> str:
     icon_path = Path(__file__).resolve().parent / "icons" / icon_name
 
     return f"""
+        /* Page heading */
+        QLabel#pageHeading {{
+            font-size: 24px;
+            font-weight: 600;
+            color: {colors["text"]};
+        }}
+
         /* General buttons */
         QPushButton {{
             background-color: {colors["button"]};
